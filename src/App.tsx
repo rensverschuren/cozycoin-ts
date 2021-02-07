@@ -7,8 +7,7 @@ interface Block {
     nonce: string;
     prevHash?: string;
     hash: string;
-    isGenesis: boolean;
-    transaction: Transaction;
+    transaction?: Transaction;
 }
 
 enum TransactionType {
@@ -39,33 +38,37 @@ interface Blockchain {
     blocks: Block[];
 }
 
-// const blockchain: Blockchain = {
-//     blocks: [],
-// };
+const getLastBlock = ({ blocks }: Blockchain) => blocks[blocks.length - 1];
+
+const createBlock = (prevHash: string, transaction?: Transaction): Block => {
+    const nonce = crypto.randomBytes(20).toString('hex');
+
+    const hash = sha256(
+        JSON.stringify(transaction) + nonce + prevHash,
+    ).toString();
+
+    return {
+        nonce,
+        prevHash,
+        hash,
+        transaction,
+    };
+};
 
 function App() {
-    const [blocks, setBlocks] = useState<Block[]>([]);
+    const [blockchain, setBlockchain] = useState<Blockchain>({
+        blocks: [createBlock('')],
+    });
 
     const addBlock = (transaction: Transaction) => {
-        console.log('addBlock');
+        setBlockchain((oldBlockchain) => {
+            const prevBlock = getLastBlock(oldBlockchain);
+            const newBlock = createBlock(prevBlock.hash, transaction);
 
-        setBlocks((oldBlocks) => {
-            const isGenesis = oldBlocks.length === 0;
-            const prevBlock = oldBlocks[oldBlocks.length - 1];
-
-            const nonce = crypto.randomBytes(20).toString('hex');
-
-            const hash = sha256(JSON.stringify(transaction) + nonce).toString();
-
-            const newBlock = {
-                nonce,
-                prevHash: prevBlock?.hash,
-                hash,
-                isGenesis,
-                transaction,
-            }
-
-            return [...oldBlocks, newBlock];
+            return {
+                ...oldBlockchain,
+                blocks: [...oldBlockchain.blocks, newBlock],
+            };
         });
     };
 
@@ -80,7 +83,7 @@ function App() {
                     </tr>
                 </thead>
                 <tbody>
-                    {blocks.map((block, index) => {
+                    {blockchain.blocks.map((block, index) => {
                         return (
                             <tr key={block.hash}>
                                 <td>{index}</td>
